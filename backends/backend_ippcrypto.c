@@ -1937,3 +1937,96 @@ static void ippcp_lms_backend(void)
 {
 	register_lms_impl(&ippcp_lms);
 }
+
+/************************************************
+ * Hash DRBG interface functions
+ ************************************************/
+typedef enum {
+    PRNoRequested = 0,
+    PRRequested   = 1
+} ippsPRRequest;
+
+static int ippcp_hash_drbg_generate(struct drbg_data *data, flags_t parsed_flags)
+{
+	(void)parsed_flags;
+
+    IppStatus sts = ippStsNoErr;
+	int ret = 0;
+    
+    // set the necessary hash method
+    IppsHashMethod* hashMethod = NULL;
+    switch (data->cipher) {
+        case ACVP_SHA256:
+            hashMethod = (IppsHashMethod*)ippsHashMethod_SHA256();
+            break;
+        case ACVP_SHA384:
+            hashMethod = (IppsHashMethod*)ippsHashMethod_SHA384();
+            break;
+        case ACVP_SHA512:
+            hashMethod = (IppsHashMethod*)ippsHashMethod_SHA512();
+            break;
+        case ACVP_SHA512256:
+            hashMethod = (IppsHashMethod*)ippsHashMethod_SHA512_256();
+            break;
+        default:
+            logger(LOGGER_ERR, "Not supported for the DRBG hash algorithm\n");
+    }
+
+    int size;
+    sts = ippsDRBGGetSize(&size, hashMethod);
+    CKNULL_LOG((sts == ippStsNoErr), sts, "Error in ippsDRBGGetSize\n")
+    
+    BUFFER_INIT(drbgBuf)
+    alloc_buf(size + IPPCP_DATA_ALIGNMENT, &drbgBuf);
+
+    IppsDRBGState* pDrbgCtx = (IppsDRBGState*)(IPP_ALIGNED_PTR(drbgBuf.buf, IPPCP_DATA_ALIGNMENT));
+
+    // data->pr indicates whether or not prediction resistance is requested.
+    // If it's requested V and C seeds arrays will be reseeded in ippsDRBGGen() 
+    sts = ippsDRBGInstantiate(data->entropy.buf, data->entropy.len,
+                                data->nonce.buf, data->nonce.len,
+                                data->pers.buf, data->pers.len,
+                                data->pr ? PRRequested : PRNoRequested, 
+                                hashMethod, pDrbgCtx);
+    CKNULL_LOG((sts == ippStsNoErr), sts, "Error in ippsDRBGInstantiate\n")
+
+    if (data->entropy_reseed.buffers[0].len) {
+        sts = ippsDRBGReseed(data->entropy_reseed.buffers[0].buf, data->entropy_reseed.buffers[0].len,
+                             data->addtl_reseed.buffers[0].buf, data->addtl_reseed.buffers[0].len, 
+                             hashMethod, pDrbgCtx);
+        CKNULL_LOG((sts == ippStsNoErr), sts, "Error in ippsDRBGReseed\n")
+    }
+
+    CKINT(alloc_buf(data->rnd_data_bits_len / 8, &data->random));
+
+    sts = ippsDRBGGen((Ipp32u*)data->random.buf, (int)data->rnd_data_bits_len,
+                      data->entropy_generate.buffers[0].buf, (int)data->entropy_generate.buffers[0].len,
+                      data->addtl_generate.buffers[0].buf, (int)data->addtl_generate.buffers[0].len,
+                      hashMethod, pDrbgCtx);
+    CKNULL_LOG((sts == ippStsNoErr), sts, "Error in ippsDRBGGen (1st call)\n")
+
+    sts = ippsDRBGGen((Ipp32u*)data->random.buf, (int)data->rnd_data_bits_len,
+                      data->entropy_generate.buffers[1].buf, (int)data->entropy_generate.buffers[1].len,
+                      data->addtl_generate.buffers[1].buf, (int)data->addtl_generate.buffers[1].len,
+                      hashMethod, pDrbgCtx);
+    CKNULL_LOG((sts == ippStsNoErr), sts, "Error in ippsDRBGGen (2nd call)\n")
+
+    ret = 0;
+
+out:
+    if (pDrbgCtx)
+        ippsDRBGUninstantiate(hashMethod, pDrbgCtx);
+    free_buf(&drbgBuf);
+    return ret;
+}
+
+static struct drbg_backend ippcp_hash_drbg =
+{
+    ippcp_hash_drbg_generate,
+};
+
+ACVP_DEFINE_CONSTRUCTOR(ippcp_hash_drbg_backend)
+static void ippcp_hash_drbg_backend(void)
+{
+    register_drbg_impl(&ippcp_hash_drbg);
+}
