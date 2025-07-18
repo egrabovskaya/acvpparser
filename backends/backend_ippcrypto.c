@@ -1941,14 +1941,9 @@ static void ippcp_lms_backend(void)
 /************************************************
  * Hash DRBG interface functions
  ************************************************/
-typedef enum {
-    PRNoRequested = 0,
-    PRRequested   = 1
-} ippsPRRequest;
-
 static int ippcp_hash_drbg_generate(struct drbg_data *data, flags_t parsed_flags)
 {
-	(void)parsed_flags;
+    (void)parsed_flags;
 
     IppStatus sts = ippStsNoErr;
 	int ret = 0;
@@ -1982,12 +1977,11 @@ static int ippcp_hash_drbg_generate(struct drbg_data *data, flags_t parsed_flags
     IppsDRBGState* pDrbgCtx = (IppsDRBGState*)(IPP_ALIGNED_PTR(drbgBuf.buf, IPPCP_DATA_ALIGNMENT));
 
     // data->pr indicates whether or not prediction resistance is requested.
-    // If it's requested V and C seeds arrays will be reseeded in ippsDRBGGen() 
+    // If it's requested V and C arrays will be reseeded in ippsDRBGGen()
     sts = ippsDRBGInstantiate(data->entropy.buf, data->entropy.len,
-                                data->nonce.buf, data->nonce.len,
-                                data->pers.buf, data->pers.len,
-                                data->pr ? PRRequested : PRNoRequested, 
-                                hashMethod, pDrbgCtx);
+                              data->nonce.buf, data->nonce.len,
+                              data->pers.buf, data->pers.len,
+                              data->pr ? 1 : 0, hashMethod, pDrbgCtx);
     CKNULL_LOG((sts == ippStsNoErr), sts, "Error in ippsDRBGInstantiate\n")
 
     if (data->entropy_reseed.buffers[0].len) {
