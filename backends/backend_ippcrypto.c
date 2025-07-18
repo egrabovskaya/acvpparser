@@ -1981,7 +1981,7 @@ static int ippcp_hash_drbg_generate(struct drbg_data *data, flags_t parsed_flags
     sts = ippsDRBGInstantiate(data->entropy.buf, data->entropy.len,
                               data->nonce.buf, data->nonce.len,
                               data->pers.buf, data->pers.len,
-                              data->pr ? 1 : 0, hashMethod, pDrbgCtx);
+                              data->pr, hashMethod, pDrbgCtx);
     CKNULL_LOG((sts == ippStsNoErr), sts, "Error in ippsDRBGInstantiate\n")
 
     if (data->entropy_reseed.buffers[0].len) {
