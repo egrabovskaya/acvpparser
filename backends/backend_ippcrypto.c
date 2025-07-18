@@ -1946,7 +1946,7 @@ static int ippcp_hash_drbg_generate(struct drbg_data *data, flags_t parsed_flags
     (void)parsed_flags;
 
     IppStatus sts = ippStsNoErr;
-	int ret = 0;
+    int ret = 0;
     
     // set the necessary hash method
     IppsHashMethod* hashMethod = NULL;
