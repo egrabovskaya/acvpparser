@@ -1014,6 +1014,17 @@ static int cryptomb_rsa_keygen_en(struct buffer *ebuf, uint32_t modulus, void **
     alloc_buf(BN_num_bytes(n), nbuf);
     BN_bn2binpad(n, nbuf->buf, BN_num_bytes(n));
 
+    printf("ebuf: ");
+    for (int i = 0; i < BN_num_bytes(egen); ++i) {
+        printf("%02x", ebuf->buf[i]);
+    }
+    printf("\n");
+    printf("nbuf: ");
+    for (int i = 0; i < BN_num_bytes(n); ++i) {
+        printf("%02x", nbuf->buf[i]);
+    }
+    printf("\n");
+
     *privkey = rsa;
 
 out:
