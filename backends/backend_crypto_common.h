@@ -73,6 +73,7 @@ static void set_drng_to_gen_rep_seq(Ipp32u seed)
     // Set deterministic RNG for generation
     RAND_set_rand_method(&stdlib_rand_meth);
 
+    printf("seed: %u\n", seed);
     RAND_seed(&seed, sizeof(Ipp32u));
 #if OPENSSL_VERSION_MAJOR >= 3
 #pragma GCC diagnostic pop
