@@ -1039,6 +1039,8 @@ cryptomb_rsa_decryption_primitive(struct rsa_decryption_primitive_data *data, fl
     mbx_status sts = MBX_STATUS_OK;
 	(void)parsed_flags;
 
+    static int counter = 0;
+
     /* Define RSA bitlen */
     int rsaByteLen = data->n.len;
     int rsaBitsize = rsaByteLen*8;
@@ -1196,6 +1198,7 @@ cryptomb_rsa_decryption_primitive(struct rsa_decryption_primitive_data *data, fl
     if (cmp_bn_res == 1) {
         logger(LOGGER_WARN, "Error, message is bigger than modulus\n");
         data->dec_result = 0;
+        counter++;
         goto out;
     }
 
@@ -1236,6 +1239,43 @@ cryptomb_rsa_decryption_primitive(struct rsa_decryption_primitive_data *data, fl
     }
 
 out:
+    if (counter == 0) {
+        // Print cipherText
+        printf("cipherText: ");
+        for (size_t i = 0; i < data->msg.len; i++) {
+            printf("%02X", data->msg.buf[i]);
+        }
+        printf("\n");
+
+        // Print data->s.buf
+        printf("plainText: ");
+        for (size_t i = 0; i < data->s.len; i++) {
+            printf("%02x", data->s.buf[i]);
+        }
+        printf("\n");
+
+        char* n_str = BN_bn2hex(bn_n);
+        printf("modulus (bn_n): %s\n", n_str);
+        OPENSSL_free(n_str);
+
+        printf("===> testPassed:true\n");
+    }
+    else if (counter >= 10) {
+        // Print cipherText
+        printf("%d cipherText: ", counter);
+        for (size_t i = 0; i < data->msg.len; i++) {
+            printf("%02X", data->msg.buf[i]);
+        }
+        printf("\n");
+
+        char* n_str = BN_bn2hex(bn_n);
+        printf("modulus (bn_n): %s\n", n_str);
+        OPENSSL_free(n_str);
+
+        printf("===> testPassed:false\n\n");
+        counter = 0;
+    }
+
     BN_free(bn_n);
     BN_free(bn_e);
     BN_free(bn_d);
